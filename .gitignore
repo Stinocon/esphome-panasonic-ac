@@ -1,4 +1,5 @@
 /.esphome/
+/.esphome-upstream/
 **/.pioenvs/
 **/.piolibdeps/
 **/lib/

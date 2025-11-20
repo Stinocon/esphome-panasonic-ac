@@ -10,10 +10,9 @@ static const char *const TAG = "panasonic_ac";
 climate::ClimateTraits PanasonicAC::traits() {
   auto traits = climate::ClimateTraits();
 
-  traits.set_supports_action(false);
-
-  traits.set_supports_current_temperature(true);
-  traits.set_supports_two_point_target_temperature(false);
+  traits.clear_feature_flags(climate::CLIMATE_SUPPORTS_ACTION |
+                             climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE);
+  traits.add_feature_flags(climate::CLIMATE_SUPPORTS_CURRENT_TEMPERATURE);
   traits.set_visual_min_temperature(MIN_TEMPERATURE);
   traits.set_visual_max_temperature(MAX_TEMPERATURE);
   traits.set_visual_temperature_step(TEMPERATURE_STEP);
@@ -93,18 +92,23 @@ void PanasonicAC::update_target_temperature(uint8_t raw_value) {
 void PanasonicAC::update_swing_horizontal(const std::string &swing) {
   this->horizontal_swing_state_ = swing;
 
-  if (this->horizontal_swing_select_ != nullptr &&
-      this->horizontal_swing_select_->state != this->horizontal_swing_state_) {
-    this->horizontal_swing_select_->publish_state(
-        this->horizontal_swing_state_);  // Set current horizontal swing position
+  if (this->horizontal_swing_select_ != nullptr) {
+    const char *current_option = this->horizontal_swing_select_->current_option();
+    if (current_option == nullptr || this->horizontal_swing_state_ != current_option) {
+      this->horizontal_swing_select_->publish_state(
+          this->horizontal_swing_state_);  // Set current horizontal swing position
+    }
   }
 }
 
 void PanasonicAC::update_swing_vertical(const std::string &swing) {
   this->vertical_swing_state_ = swing;
 
-  if (this->vertical_swing_select_ != nullptr && this->vertical_swing_select_->state != this->vertical_swing_state_)
-    this->vertical_swing_select_->publish_state(this->vertical_swing_state_);  // Set current vertical swing position
+  if (this->vertical_swing_select_ != nullptr) {
+    const char *current_option = this->vertical_swing_select_->current_option();
+    if (current_option == nullptr || this->vertical_swing_state_ != current_option)
+      this->vertical_swing_select_->publish_state(this->vertical_swing_state_);  // Set current vertical swing position
+  }
 }
 
 void PanasonicAC::update_nanoex(bool nanoex) {
