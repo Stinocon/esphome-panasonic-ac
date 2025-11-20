@@ -105,10 +105,10 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
     set_value(0x31, *call.get_target_temperature() * 2);
   }
 
-  if (call.get_custom_fan_mode().has_value()) {
+  if (call.has_custom_fan_mode()) {
     ESP_LOGV(TAG, "Requested fan mode change");
 
-    std::string fanMode = *call.get_custom_fan_mode();
+    std::string fanMode = call.get_custom_fan_mode();
 
     if (fanMode == "Automatic") {
       set_value(0xB2, 0x41);
@@ -159,10 +159,10 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
     }
   }
 
-  if (call.get_custom_preset().has_value()) {
+  if (call.has_custom_preset()) {
     ESP_LOGV(TAG, "Requested preset change");
 
-    std::string preset = *call.get_custom_preset();
+    std::string preset = call.get_custom_preset();
 
     if (preset.compare("Normal") == 0) {
       set_value(0xB2, 0x41);
@@ -442,8 +442,19 @@ void PanasonicACWLAN::handle_packet() {
 
     update_nanoex(nanoex);
 
-    this->custom_fan_mode = determine_fan_speed(this->rx_buffer_[26]);
-    this->custom_preset = determine_preset(this->rx_buffer_[42]);
+    std::string fan_mode = determine_fan_speed(this->rx_buffer_[26]);
+    const char *fan_mode_ptr = this->find_custom_fan_mode_(fan_mode.c_str());
+    if (fan_mode_ptr != nullptr)
+      this->set_custom_fan_mode_(fan_mode_ptr);
+    else
+      this->clear_custom_fan_mode_();
+
+    std::string preset = determine_preset(this->rx_buffer_[42]);
+    const char *preset_ptr = this->find_custom_preset_(preset.c_str());
+    if (preset_ptr != nullptr)
+      this->set_custom_preset_(preset_ptr);
+    else
+      this->clear_custom_preset_();
 
     this->swing_mode = determine_swing(this->rx_buffer_[30]);
 
@@ -501,11 +512,25 @@ void PanasonicACWLAN::handle_packet() {
           break;
         case 0xA0:  // Fan speed
           ESP_LOGV(TAG, "Received fan speed");
-          this->custom_fan_mode = determine_fan_speed(this->rx_buffer_[currentIndex + 2]);
+          {
+            std::string fan_mode_report = determine_fan_speed(this->rx_buffer_[currentIndex + 2]);
+            const char *fan_mode_report_ptr = this->find_custom_fan_mode_(fan_mode_report.c_str());
+            if (fan_mode_report_ptr != nullptr)
+              this->set_custom_fan_mode_(fan_mode_report_ptr);
+            else
+              this->clear_custom_fan_mode_();
+          }
           break;
         case 0xB2: // Preset
           ESP_LOGV(TAG, "Received preset");
-          this->custom_preset = determine_preset(this->rx_buffer_[currentIndex + 2]);
+          {
+            std::string preset_report = determine_preset(this->rx_buffer_[currentIndex + 2]);
+            const char *preset_report_ptr = this->find_custom_preset_(preset_report.c_str());
+            if (preset_report_ptr != nullptr)
+              this->set_custom_preset_(preset_report_ptr);
+            else
+              this->clear_custom_preset_();
+          }
           break;
         case 0xA1:
           ESP_LOGV(TAG, "Received swing mode");

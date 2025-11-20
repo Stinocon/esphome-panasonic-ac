@@ -80,16 +80,18 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
     this->cmd[1] = *call.get_target_temperature() / TEMPERATURE_STEP;
   }
 
-  if (call.get_custom_fan_mode().has_value()) {
+  if (call.has_custom_fan_mode()) {
     ESP_LOGV(TAG, "Requested fan mode change");
 
-    if(this->custom_preset != "Normal")
+    const char *current_preset_cstr = this->get_custom_preset();
+    std::string current_preset = current_preset_cstr != nullptr ? current_preset_cstr : "";
+    if (current_preset != "Normal")
     {
       ESP_LOGV(TAG, "Resetting preset");
       this->cmd[5] = (this->cmd[5] & 0xF0);  // Clear right nib for normal mode
     }
 
-    std::string fanMode = *call.get_custom_fan_mode();
+    std::string fanMode = call.get_custom_fan_mode();
 
     if (fanMode == "Automatic")
       this->cmd[3] = 0xA0;
@@ -129,10 +131,10 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
     }
   }
 
-  if (call.get_custom_preset().has_value()) {
+  if (call.has_custom_preset()) {
     ESP_LOGV(TAG, "Requested preset change");
 
-    std::string preset = *call.get_custom_preset();
+    std::string preset = call.get_custom_preset();
 
     if (preset.compare("Normal") == 0)
       this->cmd[5] = (this->cmd[5] & 0xF0);  // Clear right nib for normal mode
@@ -151,7 +153,12 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
  */
 void PanasonicACCNT::set_data(bool set) {
   this->mode = determine_mode(this->data[0]);
-  this->custom_fan_mode = determine_fan_speed(this->data[3]);
+  std::string fan_mode = determine_fan_speed(this->data[3]);
+  const char *fan_mode_ptr = this->find_custom_fan_mode_(fan_mode.c_str());
+  if (fan_mode_ptr != nullptr)
+    this->set_custom_fan_mode_(fan_mode_ptr);
+  else
+    this->clear_custom_fan_mode_();
 
   std::string verticalSwing = determine_vertical_swing(this->data[4]);
   std::string horizontalSwing = determine_horizontal_swing(this->data[4]);
@@ -204,7 +211,11 @@ void PanasonicACCNT::set_data(bool set) {
   this->update_swing_vertical(verticalSwing);
   this->update_swing_horizontal(horizontalSwing);
 
-  this->custom_preset = preset;
+  const char *preset_ptr = this->find_custom_preset_(preset.c_str());
+  if (preset_ptr != nullptr)
+    this->set_custom_preset_(preset_ptr);
+  else
+    this->clear_custom_preset_();
 
   this->update_nanoex(nanoex);
   this->update_eco(eco);
