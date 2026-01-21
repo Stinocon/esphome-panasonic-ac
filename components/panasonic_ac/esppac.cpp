@@ -1,6 +1,7 @@
 #include "esppac.h"
 
 #include "esphome/core/log.h"
+#include <fstream>
 
 namespace esphome {
 namespace panasonic_ac {
@@ -93,11 +94,21 @@ void PanasonicAC::update_swing_horizontal(const std::string &swing) {
   this->horizontal_swing_state_ = swing;
 
   if (this->horizontal_swing_select_ != nullptr) {
-    const char *current_option = this->horizontal_swing_select_->current_option();
-    if (current_option == nullptr || this->horizontal_swing_state_ != current_option) {
+    auto current_option = this->horizontal_swing_select_->current_option();
+    const std::string current_option_str = current_option.value_or("");
+    if (current_option_str.empty() || this->horizontal_swing_state_ != current_option_str) {
       this->horizontal_swing_select_->publish_state(
           this->horizontal_swing_state_);  // Set current horizontal swing position
     }
+
+    // #region agent log
+    {
+      std::ofstream log("/Users/stefano/Documents/Sviluppo/esphome-panasonic-ac/.cursor/debug.log", std::ios::app);
+      log << "{\"sessionId\":\"debug-session\",\"runId\":\"pre-fix\",\"hypothesisId\":\"H1\",\"location\":\"esppac.cpp:update_swing_horizontal\",\"message\":\"horizontal swing update\",\"data\":{\"state\":\""
+          << this->horizontal_swing_state_ << "\",\"currentOption\":\"" << current_option_str << "\"},\"timestamp\":"
+          << millis() << "}" << std::endl;
+    }
+    // #endregion
   }
 }
 
@@ -105,9 +116,19 @@ void PanasonicAC::update_swing_vertical(const std::string &swing) {
   this->vertical_swing_state_ = swing;
 
   if (this->vertical_swing_select_ != nullptr) {
-    const char *current_option = this->vertical_swing_select_->current_option();
-    if (current_option == nullptr || this->vertical_swing_state_ != current_option)
+    auto current_option = this->vertical_swing_select_->current_option();
+    const std::string current_option_str = current_option.value_or("");
+    if (current_option_str.empty() || this->vertical_swing_state_ != current_option_str)
       this->vertical_swing_select_->publish_state(this->vertical_swing_state_);  // Set current vertical swing position
+
+    // #region agent log
+    {
+      std::ofstream log("/Users/stefano/Documents/Sviluppo/esphome-panasonic-ac/.cursor/debug.log", std::ios::app);
+      log << "{\"sessionId\":\"debug-session\",\"runId\":\"pre-fix\",\"hypothesisId\":\"H2\",\"location\":\"esppac.cpp:update_swing_vertical\",\"message\":\"vertical swing update\",\"data\":{\"state\":\""
+          << this->vertical_swing_state_ << "\",\"currentOption\":\"" << current_option_str << "\"},\"timestamp\":"
+          << millis() << "}" << std::endl;
+    }
+    // #endregion
   }
 }
 
@@ -184,18 +205,40 @@ void PanasonicAC::set_current_temperature_sensor(sensor::Sensor *current_tempera
 
 void PanasonicAC::set_vertical_swing_select(select::Select *vertical_swing_select) {
   this->vertical_swing_select_ = vertical_swing_select;
-  this->vertical_swing_select_->add_on_state_callback([this](const std::string &value, size_t index) {
+  this->vertical_swing_select_->add_on_state_callback([this](size_t index) {
+    const auto &options = this->vertical_swing_select_->traits().get_options();
+    if (index >= options.size())
+      return;
+    const auto &value = options[index];
     if (value == this->vertical_swing_state_)
       return;
+    // #region agent log
+    {
+      std::ofstream log("/Users/stefano/Documents/Sviluppo/esphome-panasonic-ac/.cursor/debug.log", std::ios::app);
+      log << "{\"sessionId\":\"debug-session\",\"runId\":\"pre-fix\",\"hypothesisId\":\"H3\",\"location\":\"esppac.cpp:set_vertical_swing_select\",\"message\":\"vertical swing callback\",\"data\":{\"index\":"
+          << index << ",\"value\":\"" << value << "\"},\"timestamp\":" << millis() << "}" << std::endl;
+    }
+    // #endregion
     this->on_vertical_swing_change(value);
   });
 }
 
 void PanasonicAC::set_horizontal_swing_select(select::Select *horizontal_swing_select) {
   this->horizontal_swing_select_ = horizontal_swing_select;
-  this->horizontal_swing_select_->add_on_state_callback([this](const std::string &value, size_t index) {
+  this->horizontal_swing_select_->add_on_state_callback([this](size_t index) {
+    const auto &options = this->horizontal_swing_select_->traits().get_options();
+    if (index >= options.size())
+      return;
+    const auto &value = options[index];
     if (value == this->horizontal_swing_state_)
       return;
+    // #region agent log
+    {
+      std::ofstream log("/Users/stefano/Documents/Sviluppo/esphome-panasonic-ac/.cursor/debug.log", std::ios::app);
+      log << "{\"sessionId\":\"debug-session\",\"runId\":\"pre-fix\",\"hypothesisId\":\"H4\",\"location\":\"esppac.cpp:set_horizontal_swing_select\",\"message\":\"horizontal swing callback\",\"data\":{\"index\":"
+          << index << ",\"value\":\"" << value << "\"},\"timestamp\":" << millis() << "}" << std::endl;
+    }
+    // #endregion
     this->on_horizontal_swing_change(value);
   });
 }

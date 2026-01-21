@@ -1,5 +1,6 @@
 #include "esppac_cnt.h"
 #include "esppac_commands_cnt.h"
+#include <fstream>
 
 namespace esphome {
 namespace panasonic_ac {
@@ -83,8 +84,8 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
   if (call.has_custom_fan_mode()) {
     ESP_LOGV(TAG, "Requested fan mode change");
 
-    const char *current_preset_cstr = this->get_custom_preset();
-    std::string current_preset = current_preset_cstr != nullptr ? current_preset_cstr : "";
+    auto current_preset = this->get_custom_preset();
+    std::string current_preset = current_preset.value_or("");
     if (current_preset != "Normal")
     {
       ESP_LOGV(TAG, "Resetting preset");
@@ -92,6 +93,14 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
     }
 
     std::string fanMode = call.get_custom_fan_mode();
+
+    // #region agent log
+    {
+      std::ofstream log("/Users/stefano/Documents/Sviluppo/esphome-panasonic-ac/.cursor/debug.log", std::ios::app);
+      log << "{\"sessionId\":\"debug-session\",\"runId\":\"pre-fix\",\"hypothesisId\":\"H5\",\"location\":\"esppac_cnt.cpp:control\",\"message\":\"fan mode request\",\"data\":{\"currentPreset\":\""
+          << current_preset << "\",\"fanMode\":\"" << fanMode << "\"},\"timestamp\":" << millis() << "}" << std::endl;
+    }
+    // #endregion
 
     if (fanMode == "Automatic")
       this->cmd[3] = 0xA0;
